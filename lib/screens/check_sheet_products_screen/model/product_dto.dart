@@ -62,12 +62,12 @@ class ProductDTO {
   String? code;
   String? name;
   double? price;
-  double? inventory;
-  double inventoryCurrent;
+  double? inventory; //Tồn kho
+  double inventoryCurrent; //Thực tế
   String image;
   List<Expiry>? expires;
   bool isCheck;
-
+  String? scaleCode;
   ProductDTO({
     this.id,
     this.code,
@@ -78,7 +78,7 @@ class ProductDTO {
     this.image = '',
     this.expires,
     this.isCheck = false,
-  });
+    this.scaleCode ,});
 
   factory ProductDTO.fromJson(Map<String, dynamic> json) {
     return ProductDTO(
@@ -124,6 +124,7 @@ class ProductDTO {
     String? image,
     List<Expiry>? expires,
     bool? isCheck,
+    String? scaleCode,
   }) {
     return ProductDTO(
       id: id ?? this.id,
@@ -135,6 +136,9 @@ class ProductDTO {
       image: image ?? this.image,
       expires: expires ?? this.expires,
       isCheck: isCheck ?? this.isCheck,
+      scaleCode: scaleCode ?? this.scaleCode,
+
+
     );
   }
 

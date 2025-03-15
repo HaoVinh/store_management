@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '/repositories/abstract_repository.dart';
 
 import '../../../utils/secure_storage.dart';
@@ -12,8 +13,15 @@ class AuthRepository extends AbstractRepository {
       final response = await post(url: '$_finalUrl/login', data: {
         'userName': username,
         'passWord': password,
+
       });
-      return AuthResponse.fromJson(response.data);
+      final authResponse = AuthResponse.fromJson(response.data);
+      //Hiện tại set cứng ,sau này return authResponse;
+      authResponse.id = 16413;
+      authResponse.branchName = "555 KINGMART 108";
+// Sau khi login thành công thì sẽ trả về id chi nhánh và branchName theo user login.
+      return authResponse;
+
     } on DioError catch (e) {
       if (e.response?.statusCode == 400) {
         return AuthResponse(message: e.response?.data['msg']);

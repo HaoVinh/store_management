@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
+// import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,7 +22,7 @@ import 'package:store_management/screens/check_sheet_products_screen/screens/che
 import 'package:store_management/utils/date_utils.dart';
 import 'package:stream_transform/stream_transform.dart';
 import 'package:velocity_x/velocity_x.dart';
-
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 import '../../../constants/contains.dart';
 import '../../../utils/utils.dart';
 import '../../screens.dart';
@@ -42,10 +43,13 @@ class CheckSheetProductsScreen extends StatefulWidget {
 class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
   late Barcode result;
   QRViewController? _qrViewController;
+  // MobileScannerController? _mobileScannerController;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-
+  TextEditingController _barcodeEditingController = TextEditingController();
+  FocusNode _barcodeFocusNode = FocusNode();
   late ScrollController _scrollController;
+
   late ProductBloc _productBloc;
   late CheckSheetCubit _checkSheetCubit;
   late CheckExpiresCubit _checkExpiresCubit;
@@ -57,6 +61,9 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
 
   @override
   void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _barcodeFocusNode.requestFocus();
+    });
     _date = dateUtils.getFormattedDateByCustom(
         DateTime.now(), "dd/MM/yyyy HH:mm:ss");
 
@@ -75,7 +82,14 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
       );
     _scrollController = ScrollController();
     _showExpiresInit();
+
     super.initState();
+    _barcodeFocusNode.addListener(() {
+      if (_barcodeFocusNode.hasFocus && hasScan) {
+        // Khi focus nhưng không cho phép hiển thị dropdown → đóng lại
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -98,27 +112,17 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
     }
   }
 
-  _scrollToItem(int index, final data) {
-    setState(() {
-      indexFocus = index;
-    });
-    if (index == -1) index = data.length - 1;
-    try {
-      if ((index * _scrollController.position.maxScrollExtent / data.length) ==
-          _scrollController.position.pixels) {
-        return;
-      }
-      _scrollController.animateTo(
-        index * _scrollController.position.maxScrollExtent / data.length,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        print(e);
-      }
-    }
-  }
+
+
+_bringItemToTop(int index,List<ProductDTO> products) {
+ if(index < 0 || index >= products.length)
+   return;
+ setState(() {
+   var product = products.removeAt(index); // Xóa sản phẩm khỏi danh sách
+   products.insert(0, product); // đưa danh sách lên đầu danh sách
+   indexFocus = 0; // focus vào sản phẩm đầu tiên
+ });
+}
 
   initPermissions() async {
     var cameraStatus = await Permission.camera.status;
@@ -127,45 +131,12 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
     }
     return cameraStatus.isGranted;
   }
+  StreamSubscription? _productSubscription;
 
-  scannerBarcode(String barcode) {
-    soundWhenScanned();
-    var state = _productBloc.state as ProductLoaded;
-    bool isExist = false;
-    var oldLength = state.products.length;
-    for (var i = 0; i < state.products.length; i++) {
-      var element = state.products[i];
-      if (element.code == barcode) {
-        _productBloc.add(
-          EditProductEvent(
-            product: element.copyWith(
-              inventoryCurrent: element.inventoryCurrent + 1,
-              isCheck: true,
-            ),
-            index: i,
-          ),
-        );
-        _scrollToItem(i, state.products);
-        isExist = true;
-      }
-    }
-    if (!isExist) {
-      try {
-        setState(() {
-          indexFocus = -1;
-        });
-        _productBloc.add(
-          AddProductEvent(barcode: barcode, branchId: widget.branchId),
-        );
-        var currentState = _productBloc.state as ProductLoaded;
 
-        var checkLength = currentState.products.length > oldLength;
-        if (checkLength) {
-          _scrollToItem(-1, currentState.products);
-        }
-      } catch (e) {}
-    }
-  }
+
+
+
 
   soundWhenScanned() async {
     final player = AudioPlayer();
@@ -182,29 +153,10 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
     }
   }
 
-  void _onQRViewCreated(QRViewController controller) {
-    _qrViewController = controller;
-
-    if (Platform.isAndroid) {
-      if (!_isShowCam) {
-        _qrViewController?.pauseCamera();
-      } else {
-        _qrViewController?.resumeCamera();
-      }
-    } else {
-      _qrViewController?.resumeCamera();
-    }
-    controller.scannedDataStream
-        .debounce(const Duration(milliseconds: 300))
-        .listen((scanData) {
-      scannerBarcode(scanData.code!);
-    });
-  }
-
   _beforeDispose() {
     try {
       var currentDate =
-          dateUtils.getFormattedDateByCustom(DateTime.now(), "dd/MM/yyyy");
+      dateUtils.getFormattedDateByCustom(DateTime.now(), "dd/MM/yyyy");
       var selectDate = _date.substring(0, 10);
 
       if (currentDate == selectDate) {
@@ -221,30 +173,22 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
     } catch (e) {}
   }
 
+  // Giải phóng tài nguyên
   @override
   void dispose() {
     //save data
     _beforeDispose();
     _scrollController.dispose();
+    _barcodeEditingController.dispose();
+    _barcodeFocusNode.dispose();
     if (_qrViewController != null) {
       _qrViewController!.dispose();
     }
+    _productSubscription?.cancel();
     super.dispose();
   }
 
-  void _onPermissionSet(BuildContext context, QRViewController ctrl, bool p) {
-    if (!p) {
-      Fluttertoast.showToast(
-        msg: 'Không có quyền bật camera',
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        timeInSecForIosWeb: 1,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-        fontSize: 16.0,
-      );
-    }
-  }
+
 
   void _deleteAllProducts() {
     _checkSheetCubit.delete(widget.branchId, _date);
@@ -408,16 +352,16 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
           children: [
             _isShowCam
                 ? Expanded(
-                    flex: 2,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 500),
-                      child: _buildQrView(context),
-                      // child: AppBarcodeScannerWidget.defaultStyle(
-                      //   resultCallback: addBarCode,
-                      //   openManual: true,
-                      // ),
-                    ),
-                  )
+              flex: 2,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 500),
+                child: _buildQrView(context),
+                // child: AppBarcodeScannerWidget.defaultStyle(
+                //   resultCallback: addBarCode,
+                //   openManual: true,
+                // ),
+              ),
+            )
                 : Container(),
             NotificationListener<ScrollNotification>(
               onNotification: (ScrollNotification scrollNotification) {
@@ -444,32 +388,32 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
                       return state.products.isEmpty
                           ? _noDataSection("Không có dữ liệu")
                           : RefreshIndicator(
-                              onRefresh: () async {
-                                _productBloc.add(LoadProductsEvent(
-                                    branchId: widget.branchId,
-                                    pageSize: _pageSize,
-                                    pageIndex: 1));
-                              },
-                              semanticsValue: "Đang tải",
-                              triggerMode: RefreshIndicatorTriggerMode.anywhere,
-                              child: ListView.builder(
-                                  controller: _scrollController,
-                                  itemCount:
-                                      state.hasNext && state.isLoading != null
-                                          ? state.products.length + 1
-                                          : state.products.length,
-                                  addAutomaticKeepAlives: true,
-                                  shrinkWrap: true,
-                                  physics: const BouncingScrollPhysics(),
-                                  itemBuilder: (context, index) {
-                                    if (index < state.products.length) {
-                                      return _listProducts(
-                                          product: state.products[index],
-                                          index: index);
-                                    }
-                                    return _loadingSection();
-                                  }),
-                            );
+                        onRefresh: () async {
+                          _productBloc.add(LoadProductsEvent(
+                              branchId: widget.branchId,
+                              pageSize: _pageSize,
+                              pageIndex: 1));
+                        },
+                        semanticsValue: "Đang tải",
+                        triggerMode: RefreshIndicatorTriggerMode.anywhere,
+                        child: ListView.builder(
+                            controller: _scrollController,
+                            itemCount:
+                            state.hasNext && state.isLoading != null
+                                ? state.products.length + 1
+                                : state.products.length,
+                            addAutomaticKeepAlives: true,
+                            shrinkWrap: true,
+                            physics: const BouncingScrollPhysics(),
+                            itemBuilder: (context, index) {
+                              if (index < state.products.length) {
+                                return _listProducts(
+                                    product: state.products[index],
+                                    index: index);
+                              }
+                              return _loadingSection();
+                            }),
+                      );
                     }
 
                     if (state is ProductError) {
@@ -549,55 +493,82 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
             const SizedBox(
               height: 10,
             ),
-            const Text(
-              '1. Bấm vào biểu tượng camera để quét mã vạch',
-              style: TextStyle(
-                fontSize: 16,
+            Container(
+              alignment: Alignment.centerLeft, // Căn trái hoàn toàn
+              padding: const EdgeInsets.only(left: 20), // Thụt đầu dòng 20px
+              child: const Text(
+                '1. Chọn trỏ vào trường nhập',
+                style: TextStyle(
+                  fontSize: 14,
+                ),
+              ),
+            ),
+
+            const SizedBox(
+              height: 10,
+            ),
+            Container(
+              alignment: Alignment.centerLeft, // Căn trái hoàn toàn
+              padding: const EdgeInsets.only(left: 20), // Thụt đầu dòng 20px
+              child: const Text(
+                '2. Đưa mã vạch của sản phẩm ngay tia quét và quét sản phẩm',
+                style: TextStyle(
+                  fontSize: 14,
+                ),
+              ),
+            ),
+
+            const SizedBox(
+              height: 10,
+            ),
+            Container(
+              alignment: Alignment.centerLeft, // Căn trái hoàn toàn
+              padding: const EdgeInsets.only(left: 20), // Thụt đầu dòng 20px
+              child: const Text(
+                '3. Sản phẩm chưa có trong danh sách sẽ được thêm vào, ngược lại sẽ được cập nhật số lượng',
+                style: TextStyle(
+                  fontSize: 14,
+                ),
+              ),
+            ),
+
+            const SizedBox(
+              height: 10,
+            ),
+            Container(
+              alignment: Alignment.centerLeft, // Căn trái hoàn toàn
+              padding: const EdgeInsets.only(left: 20), // Thụt đầu dòng 20px
+              child: const Text(
+                '4. Lưu dữ liệu để mỗi khi vào danh sách sản phẩm sẽ hiển thị dữ liệu đã được lưu',
+                style: TextStyle(
+                  fontSize: 14,
+                ),
               ),
             ),
             const SizedBox(
               height: 10,
             ),
-            const Text(
-              '2. Đưa mã vạch của sản phẩm lên camera',
-              style: TextStyle(
-                fontSize: 16,
+            Container(
+              alignment: Alignment.centerLeft, // Căn trái hoàn toàn
+              padding: const EdgeInsets.only(left: 20), // Thụt đầu dòng 20px
+              child: const Text(
+                '5. Xoá dữ liệu để cập nhật lại thông số mới',
+                style: TextStyle(
+                  fontSize: 14,
+                ),
               ),
             ),
             const SizedBox(
               height: 10,
             ),
-            const Text(
-              '3. Sản phẩm chưa có trong danh sách sẽ được thêm vào, ngược lại sẽ được cập nhật số lượng',
-              style: TextStyle(
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(
-              height: 10,
-            ),
-            const Text(
-              '4. Lưu dữ liệu để mỗi khi vào danh sách sản phẩm sẽ hiển thị dữ liệu đã được lưu',
-              style: TextStyle(
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(
-              height: 10,
-            ),
-            const Text(
-              '5. Xoá dữ liệu để cập nhật lại thông số mới',
-              style: TextStyle(
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(
-              height: 10,
-            ),
-            const Text(
-              '6. Ấn vào biểu tượng X để đóng camera',
-              style: TextStyle(
-                fontSize: 16,
+            Container(
+              alignment: Alignment.centerLeft, // Căn trái hoàn toàn
+              padding: const EdgeInsets.only(left: 20), // Thụt đầu dòng 20px
+              child: const Text(
+                '6. Có thể nhập mã sản phẩm để hiện danh sách sản phẩm cần thêm',
+                style: TextStyle(
+                  fontSize: 14,
+                ),
               ),
             ),
             const SizedBox(
@@ -615,7 +586,7 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
     );
   }
 
-  _endDrawer() {
+  _endDrawer  () {
     return Drawer(
       child: Column(
         children: [
@@ -640,30 +611,30 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
                 var checkSheets = state.checkSheets;
                 return checkSheets.isEmpty
                     ? const Expanded(
-                        flex: 9,
-                        child: Center(
-                          child: Text('Không có dữ liệu'),
-                        ),
-                      )
+                  flex: 9,
+                  child: Center(
+                    child: Text('Không có dữ liệu'),
+                  ),
+                )
                     : Expanded(
-                        flex: 9,
-                        child: ListView.builder(
-                            controller: _scrollController,
-                            itemCount: state.hasNext && state.isLoading != null
-                                ? checkSheets.length + 1
-                                : checkSheets.length,
-                            addAutomaticKeepAlives: true,
-                            shrinkWrap: true,
-                            physics: const BouncingScrollPhysics(),
-                            itemBuilder: (context, index) {
-                              if (index < checkSheets.length) {
-                                return _listCheckSheets(
-                                    checkSheet: checkSheets[index],
-                                    index: index);
-                              }
-                              return _loadingSection();
-                            }),
-                      );
+                  flex: 9,
+                  child: ListView.builder(
+                      controller: _scrollController,
+                      itemCount: state.hasNext && state.isLoading != null
+                          ? checkSheets.length + 1
+                          : checkSheets.length,
+                      addAutomaticKeepAlives: true,
+                      shrinkWrap: true,
+                      physics: const BouncingScrollPhysics(),
+                      itemBuilder: (context, index) {
+                        if (index < checkSheets.length) {
+                          return _listCheckSheets(
+                              checkSheet: checkSheets[index],
+                              index: index);
+                        }
+                        return _loadingSection();
+                      }),
+                );
               }
 
               if (state is CheckSheetError) {
@@ -703,25 +674,240 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
     );
   }
 
-  Widget _buildQrView(BuildContext context) {
-    // // For this example we check how width or tall the device is and change the scanArea and overlay accordingly.
-    // var scanArea = (MediaQuery.of(context).size.width < 400 ||
-    //     MediaQuery.of(context).size.height < 400)
-    //     ? 150.0
-    //     : 300.0;
-    // // To ensure the Scanner view is properly sizes after rotation
-    // // we need to listen for Flutter SizeChanged notification and update controller
-    return QRView(
-        key: qrKey,
-        onQRViewCreated: _onQRViewCreated,
-        overlay: QrScannerOverlayShape(
-            borderColor: Colors.red,
-            borderRadius: 10,
-            borderLength: 30,
-            borderWidth: 10),
-        onPermissionSet: (ctrl, p) => _onPermissionSet(context, ctrl, p),
-        formatsAllowed: _listFormats);
+
+  _scrollToItem(int index, final data) {
+    // setState(() {
+    //   indexFocus = index;
+    // });
+    if (index == -1) index = data.length - 1;
+    try {
+      if ((index * _scrollController.position.maxScrollExtent / data.length) ==
+          _scrollController.position.pixels) {
+        return;
+      }
+      _scrollController.animateTo(
+        index * _scrollController.position.maxScrollExtent / data.length,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print(e);
+      }
+    }
   }
+
+
+
+
+  void scannerBarcode(String barcode) {
+
+    _barcodeEditingController.text = barcode;
+    // _barcodeFocusNode.requestFocus();
+
+    Future.delayed(Duration(milliseconds: 300), () {
+      _barcodeEditingController.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _barcodeEditingController.text.length,
+      );
+      // _barcodeFocusNode.unfocus();
+      FocusScope.of(context).requestFocus(_barcodeFocusNode);
+    });
+
+    var state = _productBloc.state as ProductLoaded;
+    bool isExist = false;
+    var oldLength = state.products.length;
+
+    for (var i = 0; i < state.products.length; i++) {
+      var element = state.products[i];
+
+      if (element.code == barcode) {
+        print('Before Update: ${element.inventoryCurrent}');
+        _productBloc.add(
+          EditProductEvent(
+            product: element.copyWith(
+              inventoryCurrent: element.inventoryCurrent + 1,
+              isCheck: true,
+            ),
+            index: i,
+          ),
+        );
+
+        print('After Update: ${element.inventoryCurrent + 1}');
+        isExist = true;
+        setState(() {
+
+        });
+        break;
+      }
+    }
+
+    if (!isExist) {
+      try {
+        setState(() {
+          indexFocus = -1;
+        });
+
+        _productBloc.add(
+          AddProductEvent(barcode: barcode, branchId: widget.branchId),
+        );
+
+        var currentState = _productBloc.state as ProductLoaded;
+        if (currentState.products.length > oldLength) {
+          _bringItemToTop(0, currentState.products);
+        }
+
+      } catch (e) {
+
+      }
+    }
+
+  }
+
+  void scannerScaleProduct(String barcode , String quantityProduct, double weight) {
+    _barcodeEditingController.text = barcode;
+
+    // _barcodeFocusNode.requestFocus();
+
+    Future.delayed(Duration(milliseconds: 300), () {
+      _barcodeEditingController.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: _barcodeEditingController.text.length,
+      );
+      // _barcodeFocusNode.unfocus();
+      FocusScope.of(context).requestFocus(_barcodeFocusNode);
+    });
+
+
+    var state = _productBloc.state as ProductLoaded;
+    bool isExist = false;
+    var oldLength = state.products.length;
+    if(_isEScaleChecked){
+      for (var i = 0; i < state.products.length; i++) {
+        var element = state.products[i];
+
+        if (element.code.toString() == quantityProduct.toString()) {
+            final currentInventory = element.inventoryCurrent ?? 0.0;
+            final newInventory = currentInventory + weight;
+
+            _productBloc.add(
+              EditProductEvent(
+                product: element.copyWith(
+                  inventoryCurrent: newInventory,
+                  isCheck: true,
+                ),
+                index: i,
+              ),
+            );
+
+
+            isExist = true;setState(() {});
+            break;
+
+
+        }
+      }
+    }
+
+    if (!isExist) {
+      try {
+        setState(() {
+          indexFocus = -1;
+        });
+
+        // final productCode = barcode.substring(0,7);
+        _productBloc.add(
+          AddProductEvent(barcode: quantityProduct, branchId: widget.branchId),
+        );
+
+        Future.delayed(Duration(milliseconds: 300), () {
+          var currentState = _productBloc.state as ProductLoaded;
+
+          if (currentState.products.length > oldLength) {
+            var newProduct = currentState.products.first;
+
+            if (_isEScaleChecked) {
+              final updatedProduct = newProduct.copyWith(
+                inventoryCurrent: weight,
+                isCheck: true,
+              );
+
+              _productBloc.add(
+                EditProductEvent(product: updatedProduct, index: 0),
+              );
+            }
+
+            _bringItemToTop(0, currentState.products);
+          }
+        });
+      } catch (e) {
+        print('Lỗi khi thêm sản phẩm: $e');
+      }
+    }
+
+  }
+
+  void handleProductSelection(ProductDTO selectedProduct) {
+
+    _barcodeEditingController.text = selectedProduct.code ?? "";
+
+
+    scannerBarcode(selectedProduct.code ?? "");
+    setState(() {
+      _barcodeFocusNode.requestFocus();
+    });
+  }
+  bool _isEScaleChecked = false;
+
+  bool hasScan = false;
+
+  void _onTyping(String barcode){
+    setState(() {
+      hasScan = false;
+    });
+  }
+
+  void _onBarcodeEntered(String barcode) {
+    if (barcode.isNotEmpty) {
+      if (_isEScaleChecked) {
+        _handleEScaleBarcode(barcode);
+      } else {
+        _barcodeEditingController.text = barcode;
+        scannerBarcode(barcode);
+      }
+
+      setState(() {
+        hasScan = true;
+      });
+
+      Future.delayed(Duration(milliseconds: 100), () {
+        _barcodeEditingController.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _barcodeEditingController.text.length,
+        );
+
+        _barcodeFocusNode.requestFocus();
+        setState(() {});
+      });
+    }
+  }
+
+  void _handleEScaleBarcode(String barcode) {
+    if (barcode.length < 6) {
+      print('Mã vạch cân điện tử không hợp lệ');
+      return;
+    }
+
+    final productCode = barcode.substring(0, barcode.length - 6); // Mã sản phẩm
+    final weightCode = barcode.substring(barcode.length - 6); // 6 số cuối
+    final weight = double.parse(weightCode) / 10000;
+    print('Mã sản phẩm: $productCode');
+    print('Trọng lượng (kg): $weight');
+    scannerScaleProduct(barcode ,productCode, weight);
+  }
+
+
+
 
   _noDataSection(String message) {
     return CustomScrollView(
@@ -729,13 +915,123 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
         SliverFillRemaining(
           child: Center(
               child: Text(
-            message,
-            style: const TextStyle(fontSize: 20),
-          )),
+                message,
+                style: const TextStyle(fontSize: 20),
+              )),
         )
       ],
     );
   }
+
+
+  Widget _buildQrView(BuildContext context) {
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(10.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2, // TextField chiếm 4 phần
+                  child: TypeAheadField<ProductDTO>(
+                    builder: (context, controller, focusNode) {
+                      _barcodeEditingController = controller;
+                      _barcodeFocusNode = focusNode;
+                      return TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        onChanged: (value) {
+                          _onTyping(value);
+                        },
+                        onSubmitted: (value) {
+                          _onBarcodeEntered(value);
+                        },
+                        decoration: InputDecoration(
+                          labelText: "Mã vạch đã quét",
+                          hintText: "Quét mã hoặc nhập sản phẩm...",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade400),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.blue, width: 2),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          suffixIcon: IconButton(
+                            icon: Icon(Icons.clear, size: 18, color: Colors.grey.shade600),
+                            onPressed: () => controller.clear(),
+                          ),
+                        ),
+                        style: TextStyle(fontSize: 14),
+                      );
+                    },
+                    hideOnEmpty: true,
+                    hideOnLoading: true,
+                    hideOnUnfocus: true,
+                    retainOnLoading: false,
+                    suggestionsCallback: (pattern) {
+                      if (hasScan || pattern.isEmpty) return [];
+                      var state = _productBloc.state as ProductLoaded;
+                      _scrollToItem(0, state.products);
+                      return state.products
+                          .where((product) =>
+                      product.name!.toLowerCase().contains(pattern.toLowerCase()) ||
+                          product.code!.toLowerCase().contains(pattern.toLowerCase()))
+                          .toList();
+                    },
+                    itemBuilder: (context, ProductDTO suggestion) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                        decoration: BoxDecoration(
+                          border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+                        ),
+                        child: Text(
+                          "${suggestion.code} - ${suggestion.name}",
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        ),
+                      );
+                    },
+                    onSelected: (ProductDTO selectedProduct) {
+                      print("Product Selected: ${selectedProduct.code}");
+                      handleProductSelection(selectedProduct);
+                    },
+                  ),
+                ),
+                SizedBox(width: 2),
+                Expanded(
+                  flex: 1,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Checkbox(
+                        value: _isEScaleChecked,
+                        onChanged: (value) {
+                          setState(() {
+                            _isEScaleChecked = value ?? false;
+                          });
+                        },
+                        visualDensity: VisualDensity(horizontal: -4, vertical: -4), // Giảm khoảng cách
+                      ),
+                      Text(
+                        "Cân điện tử",
+                        style: TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                )
+
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   _listProducts({required ProductDTO product, index}) {
     Color color = indexFocus == index
@@ -772,7 +1068,7 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
                   color: Colors.transparent,
                   child: Padding(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: kDefaultPadding),
+                    const EdgeInsets.symmetric(horizontal: kDefaultPadding),
                     child: Image.network(
                       product.image ?? '',
                       width: 80,
@@ -862,7 +1158,7 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
                     Row(
                       children: [
                         Text(
-                          "Tồn thực tế: ${(product.inventoryCurrent.toInt())}",
+                          "Tồn thực tế: ${(product.inventoryCurrent.toDouble())?? 0}",
                           style: kTextAveHev14.copyWith(
                               color: kColorBlack.withOpacity(0.6),
                               fontSize: 14),
@@ -876,11 +1172,12 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
                                 EditProductEvent(
                                   product: product.copyWith(
                                     inventoryCurrent:
-                                        product.inventoryCurrent - 1,
+                                    product.inventoryCurrent - 1,
                                     isCheck: true,
                                   ),
                                   showToast: false,
                                   index: index,
+                                  isPressed:  true,
                                 ),
                               );
                             }
@@ -907,11 +1204,12 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
                               EditProductEvent(
                                 product: product.copyWith(
                                   inventoryCurrent:
-                                      product.inventoryCurrent + 1,
+                                  product.inventoryCurrent + 1,
                                   isCheck: true,
                                 ),
                                 showToast: false,
                                 index: index,
+                                isPressed: true,
                               ),
                             );
                           },
@@ -1006,7 +1304,7 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
                   color: Colors.transparent,
                   child: Padding(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: kDefaultPadding),
+                    const EdgeInsets.symmetric(horizontal: kDefaultPadding),
                     child: Image.network(
                       product.image ?? '',
                       width: 80,
@@ -1016,6 +1314,8 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
                         return const SizedBox(
                           width: 80,
                           height: 120,
+
+
                           child: Center(
                             child: Icon(Icons.image_not_supported),
                           ),
@@ -1034,6 +1334,12 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
                     ),
                   ),
                 ),
+
+
+
+
+
+
               ),
               const SizedBox(
                 width: kDefaultPadding / 2,
@@ -1075,7 +1381,7 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
                       height: kDefaultPadding / 4,
                     ),
                     Text(
-                      "Tồn thực tế: ${(product.inventoryCurrent.toInt())}",
+                      "Tồn thực tế: ${(product.inventoryCurrent.toPrecision(4))}",
                       style: kTextAveHev14.copyWith(
                           color: kColorBlack.withOpacity(0.6), fontSize: 14),
                     ),
@@ -1161,17 +1467,17 @@ class _CheckSheetProductsScreenState extends State<CheckSheetProductsScreen> {
           );
         },
       ),
-      IconButton(
-        onPressed: hideShowCamera,
-        icon: Icon(
-          _isShowCam ? Icons.close : Icons.camera_alt,
-          color: Colors.white,
-        ),
-        tooltip: _isShowCam ? "Ẩn camera" : "Hiện camera",
-      ),
+      // IconButton(
+      //   onPressed: hideShowCamera,
+      //   icon: Icon(
+      //     _isShowCam ? Icons.close : Icons.camera_alt,
+      //     color: Colors.white,
+      //   ),
+      //   tooltip: _isShowCam ? "Ẩn camera" : "Hiện camera",
+      // ),
       PopupMenuButton<String>(
         icon: const IconButton(
-          icon: Icon(Icons.more_vert, color: Colors.white),
+          icon: Icon(Icons.more_vert),
           onPressed: null,
         ),
         elevation: 3.2,

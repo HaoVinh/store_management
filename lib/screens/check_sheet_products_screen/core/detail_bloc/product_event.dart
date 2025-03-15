@@ -47,11 +47,12 @@ class EditProductEvent extends ProductEvent {
   final int index;
   String? action;
   bool showToast = true;
+  final bool isPressed;
 
   EditProductEvent(
       {required this.product,
       required this.index,
-      this.action,
+        this.isPressed = false, this.action,
       bool showToast = true});
 }
 

@@ -230,7 +230,7 @@ class CustomAlertDialog extends StatelessWidget {
         padding: titlePadding ??
             EdgeInsets.fromLTRB(24.0, 24.0, 24.0, content == null ? 20.0 : 0.0),
         child: DefaultTextStyle(
-          style: Theme.of(context).textTheme.headline6!,
+          style: Theme.of(context).textTheme.headlineMedium!,
           child: Semantics(namesRoute: true, child: title),
         ),
       ));
@@ -259,7 +259,7 @@ class CustomAlertDialog extends StatelessWidget {
       child: Padding(
         padding: contentPadding,
         child: DefaultTextStyle(
-          style: Theme.of(context).textTheme.subtitle1!,
+          style: Theme.of(context).textTheme.titleMedium!,
           child: content,
         ),
       ),
@@ -484,7 +484,7 @@ class SimpleDialog extends StatelessWidget {
       body.add(Padding(
           padding: titlePadding,
           child: DefaultTextStyle(
-            style: Theme.of(context).textTheme.headline6!,
+            style: Theme.of(context).textTheme.headlineMedium!,
             child: Semantics(namesRoute: true, child: title),
           )));
     } else {

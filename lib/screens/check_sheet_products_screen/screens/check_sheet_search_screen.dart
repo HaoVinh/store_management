@@ -136,8 +136,7 @@ class CheckSheetSearchScreen extends SearchDelegate<dynamic> {
             icon: const Icon(Icons.add_box_sharp, color: kPrimaryColor),
             onPressed: () {
               BlocProvider.of<ProductBloc>(context)
-                  .add(AddProductDTOEvent(product: product));
-            },
+                  .add(AddProductDTOEvent(product: product ));},
           ),
         ),
         child: Padding(

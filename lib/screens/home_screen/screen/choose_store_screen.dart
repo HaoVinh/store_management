@@ -5,7 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:store_management/constants/colors.dart';
 import 'package:store_management/screens/auth_screen/core/auth_bloc.dart';
+import '../../../utils/secure_storage.dart';
+import '../../auth_screen/model/auth_response.dart';
 import '/screens/home_screen/repository/store_dto_repository.dart';
 
 import '../../../constants/contains.dart';
@@ -73,8 +76,19 @@ class _ChooseStoreScreenState extends State<ChooseStoreScreen> {
     super.initState();
   }
 
-  decodeData() {
-    _dataDecode = jsonDecode(jsonEncode(data))['data'];
+  decodeData() async {
+    //Lấy từ "auth"
+    //Đưa vào list
+    AuthResponse? auth = await secureStorage.readAuth();
+    var map = {
+      "id": auth?.id ?? 0,
+      "branchName": auth?.branchName ?? '',
+    };
+    List<dynamic> listCNbyUser = [map];
+  
+    setState(() {
+      _dataDecode = listCNbyUser;
+    });
   }
 
   DateTime? currentBackPressTime;
@@ -165,6 +179,8 @@ class _ChooseStoreScreenState extends State<ChooseStoreScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Lựa chọn chi nhánh'),
+        backgroundColor: appColor,
+        foregroundColor: primaryColor,
         elevation: 0,
         actions: [
           IconButton(
@@ -232,29 +248,10 @@ class _ChooseStoreScreenState extends State<ChooseStoreScreen> {
                 color: Colors.black,
                 fontWeight: FontWeight.bold,
               ),
-              children: [
-                TextSpan(
-                  text: ' - ${item['contactNumber']}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
+
             ),
           ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${item['address']}${item['wardName'] != '' ? ", " + item['wardName'] : ""}, ${item['locationName']}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: kPrimaryColor.withOpacity(0.8),
-                ),
-              ),
-            ],
-          ),
+
         ),
       ),
     );

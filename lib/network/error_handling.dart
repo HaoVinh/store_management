@@ -2,7 +2,7 @@
 import 'package:dio/dio.dart';
 
 import 'error_res.dart';
-
+//http://erp.lixco.com:8180/kiot/api/data/productLixs/code/8934669260005
 class ErrorHandling {
   int code = 0;
   String message = "";

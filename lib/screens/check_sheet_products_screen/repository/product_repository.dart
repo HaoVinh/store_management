@@ -43,6 +43,8 @@ class ProductRepository extends AbstractRepository
     throw UnimplementedError();
   }
 
+
+
   Future<List<ProductDTO>> getAllBy(
       int branchId, int pageIndex, int pageSize) async {
     try {
@@ -51,6 +53,7 @@ class ProductRepository extends AbstractRepository
         url: _finalUrl,
         token: auth!.accessToken,
         queryParameters: {
+
           'branchId': branchId,
           'pageIndex': pageIndex,
           'pageSize': pageSize,
@@ -58,6 +61,11 @@ class ProductRepository extends AbstractRepository
       );
       if (response.statusCode == 200) {
         var res = ProductResponse.fromJson(response.data);
+        totalRecord: res.totalRecord ?? 0;
+        // double pageSizeDouble = pageSize.toDouble();
+        // double pageIndexDouble = pageIndex.toDouble();
+        // pageIndexDouble = totalRecords / pageSizeDouble;
+        // pageIndex = pageIndexDouble.toInt() + 1;
         return res.data!;
       }
     } catch (e) {

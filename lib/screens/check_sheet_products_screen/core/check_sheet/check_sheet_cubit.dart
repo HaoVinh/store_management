@@ -37,28 +37,71 @@ class CheckSheetCubit extends Cubit<CheckSheetState> {
     }
   }
 
+  // Future<void> createWithBody(
+  //     {String? date,
+  //     required List<ProductDTO> products,
+  //     required int branchId,
+  //     int? checkSheetId}) async {
+  //   try {
+  //     date ??= dateUtils.getFormattedDateByCustom(
+  //         DateTime.now(), 'dd/MM/yyyy HH:mm:ss');
+  //     CheckSheetDtoResponse isExistCheckSheet =
+  //         (await _checkSheetRepository.getAllBy(
+  //             branchId: branchId, pageIndex: 1, pageSize: 50, date: date));
+  //     if (isExistCheckSheet.data!.isNotEmpty) {
+  //       await _checkSheetRepository.updateWithBody(
+  //           date: date,
+  //           products: products,
+  //           branchId: branchId,
+  //           checkSheetId: isExistCheckSheet.data![0].id!);
+  //     } else {
+  //       await _checkSheetRepository.createWithBody(
+  //           date: date, products: products, branchId: branchId);
+  //       getAllBy(branchId: branchId, pageIndex: 1, pageSize: 50);
+  //     }
+  //     Fluttertoast.showToast(
+  //         msg: 'Đã lưu phiếu kiểm kho vào lúc $date',
+  //         backgroundColor: Colors.green);
+  //   } catch (e) {
+  //     Fluttertoast.showToast(msg: 'Lỗi: ${ErrorHandling.showMessage(e)}');
+  //   }
+  // }
   Future<void> createWithBody(
       {String? date,
-      required List<ProductDTO> products,
-      required int branchId,
-      int? checkSheetId}) async {
+        required List<ProductDTO> products,
+        required int branchId,
+        int? checkSheetId}) async {
     try {
       date ??= dateUtils.getFormattedDateByCustom(
           DateTime.now(), 'dd/MM/yyyy HH:mm:ss');
+
+      List<ProductDTO> scannedProducts =
+      products.where((p) => p.isCheck == true).toList();
+
+      if (scannedProducts.isEmpty) {
+        Fluttertoast.showToast(
+          msg: 'Không có sản phẩm nào được thao tác để lưu',
+          backgroundColor: Colors.red,
+        );
+        return;
+      }
+
       CheckSheetDtoResponse isExistCheckSheet =
-          (await _checkSheetRepository.getAllBy(
-              branchId: branchId, pageIndex: 1, pageSize: 50, date: date));
+      (await _checkSheetRepository.getAllBy(
+          branchId: branchId, pageIndex: 1, pageSize: 50, date: date));
+
       if (isExistCheckSheet.data!.isNotEmpty) {
         await _checkSheetRepository.updateWithBody(
             date: date,
-            products: products,
+            products: scannedProducts,
             branchId: branchId,
             checkSheetId: isExistCheckSheet.data![0].id!);
       } else {
         await _checkSheetRepository.createWithBody(
-            date: date, products: products, branchId: branchId);
+            date: date, products: scannedProducts, branchId: branchId);
         getAllBy(branchId: branchId, pageIndex: 1, pageSize: 50);
       }
+
       Fluttertoast.showToast(
           msg: 'Đã lưu phiếu kiểm kho vào lúc $date',
           backgroundColor: Colors.green);

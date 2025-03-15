@@ -1,6 +1,5 @@
 class ChooseStoreDTO {
   int? id;
-  String? branchName;
   String? address;
   String? locationName;
   String? wardName;
@@ -11,7 +10,6 @@ class ChooseStoreDTO {
 
   ChooseStoreDTO({
     this.id,
-    this.branchName,
     this.address,
     this.locationName,
     this.wardName,
@@ -24,7 +22,6 @@ class ChooseStoreDTO {
   factory ChooseStoreDTO.fromJson(Map<String, dynamic> json) {
     return ChooseStoreDTO(
       id: json['id'],
-      branchName: json['branchName'],
       address: json['address'],
       locationName: json['locationName'],
       wardName: json['wardName'],
@@ -42,7 +39,6 @@ class ChooseStoreDTO {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'branchName': branchName,
       'address': address,
       'locationName': locationName,
       'wardName': wardName,
@@ -55,12 +51,11 @@ class ChooseStoreDTO {
 
   @override
   String toString() {
-    return 'Branch{id: $id, branchName: $branchName, address: $address, locationName: $locationName, wardName: $wardName, contactNumber: $contactNumber, retailerId: $retailerId, modifiedDate: $modifiedDate, createdDate: $createdDate}';
+    return 'Branch{id: $id, address: $address, locationName: $locationName, wardName: $wardName, contactNumber: $contactNumber, retailerId: $retailerId, modifiedDate: $modifiedDate, createdDate: $createdDate}';
   }
 
   ChooseStoreDTO copyWith({
     int? id,
-    String? branchName,
     String? address,
     String? locationName,
     String? wardName,
@@ -71,7 +66,6 @@ class ChooseStoreDTO {
   }) {
     return ChooseStoreDTO(
       id: id ?? this.id,
-      branchName: branchName ?? this.branchName,
       address: address ?? this.address,
       locationName: locationName ?? this.locationName,
       wardName: wardName ?? this.wardName,
@@ -88,7 +82,6 @@ class ChooseStoreDTO {
       other is ChooseStoreDTO &&
           runtimeType == other.runtimeType &&
           id == other.id &&
-          branchName == other.branchName &&
           address == other.address &&
           locationName == other.locationName &&
           wardName == other.wardName &&
@@ -100,7 +93,6 @@ class ChooseStoreDTO {
   @override
   int get hashCode =>
       id.hashCode ^
-      branchName.hashCode ^
       address.hashCode ^
       locationName.hashCode ^
       wardName.hashCode ^

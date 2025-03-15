@@ -53,11 +53,11 @@ class _CheckingLoginPageState extends State<CheckingLoginPage> with TickerProvid
 
         Future.delayed(const Duration(seconds: 1), () {
           if( state is LoadingAuthState ){
-            Get.toNamed(CheckingLoginPage.routeName);
+            Get.toNamed(CheckingLoginPage.routeName); // nếu đang đăng nhập, chuyển đến màn hình chọn cửa hàng
           } else if ( state is LogOutAuthState ){
-            Get.offAllNamed(AuthScreen.routeName);
+            Get.offAllNamed(AuthScreen.routeName); // nếu đăng xuất, chuyển đến màn hình đăng nhập
           } else if (state.auth != null) {
-            Get.offAllNamed(ChooseStoreScreen.routeName);
+            Get.offAllNamed(ChooseStoreScreen.routeName); // nếu đăng nhập thành công, chuyển đến màn hình chọn cửa hàng
           }
         });
       },

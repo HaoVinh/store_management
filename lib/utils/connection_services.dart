@@ -1,16 +1,15 @@
-import 'package:connectivity/connectivity.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class ConnectionServices {
   Future<bool> checkConnection() async {
-    var connectivityResult = await (Connectivity().checkConnectivity());
+    var connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult != ConnectivityResult.none) {
       return true;
     }
     return false;
   }
 
-
-  get isOnline => checkConnection();
+  Future<bool> get isOnline => checkConnection();
 }
 
 final connectionServices = ConnectionServices();

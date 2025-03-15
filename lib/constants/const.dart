@@ -14,49 +14,49 @@ class Constants {
   static Color primaryColor = const Color(0xff53B97C);
 
   static ThemeData lightTheme = ThemeData(
-    backgroundColor: lightBG,
     primaryColor: lightPrimary,
     hintColor: lightAccent,
     // cursorColor: lightAccent,
     scaffoldBackgroundColor: lightBG,
     appBarTheme: AppBarTheme(
       toolbarTextStyle: TextTheme(
-        headline6: TextStyle(
+        headlineMedium: TextStyle(
           color: darkBG,
           fontSize: 18.0,
           fontWeight: FontWeight.w800,
         ),
-      ).bodyText2, titleTextStyle: TextTheme(
-        headline6: TextStyle(
+      ).bodyMedium,
+      titleTextStyle: TextTheme(
+        headlineMedium: TextStyle(
           color: darkBG,
           fontSize: 18.0,
           fontWeight: FontWeight.w800,
         ),
-      ).headline6,
+      ).headlineMedium,
     ),
   );
 
   static ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,
-    backgroundColor: darkBG,
     primaryColor: darkPrimary,
     // accentColor: darkAccent,
     scaffoldBackgroundColor: darkBG,
     // cursorColor: darkAccent,
     appBarTheme: AppBarTheme(
       toolbarTextStyle: TextTheme(
-        headline6: TextStyle(
+        headlineMedium: TextStyle(
           color: lightBG,
           fontSize: 18.0,
           fontWeight: FontWeight.w800,
         ),
-      ).bodyText2, titleTextStyle: TextTheme(
-        headline6: TextStyle(
+      ).bodyMedium,
+      titleTextStyle: TextTheme(
+        headlineMedium: TextStyle(
           color: lightBG,
           fontSize: 18.0,
           fontWeight: FontWeight.w800,
         ),
-      ).headline6,
+      ).headlineMedium,
     ),
   );
 }

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:connectivity/connectivity.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -75,7 +75,7 @@ class _StoreManagementAppState extends State<StoreManagementApp> {
   @override
   void initState() {
     super.initState();
-    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+    Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
       void _showToast(String message) {
         Fluttertoast.showToast(
           msg: message,
@@ -88,10 +88,10 @@ class _StoreManagementAppState extends State<StoreManagementApp> {
         );
       }
 
-      if (result == ConnectivityResult.none) {
+      if (results.contains(ConnectivityResult.none)) {
         _showToast('Không có kết nối mạng');
         _timer = Timer.periodic(const Duration(seconds: 5),
-            (t) => _showToast('Không có kết nối mạng'));
+                (t) => _showToast('Không có kết nối mạng'));
       } else {
         Fluttertoast.showToast(
             msg: 'Kết nối thành công',
