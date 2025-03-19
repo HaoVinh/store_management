@@ -106,26 +106,35 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
   void _onAdd(AddProductEvent event, Emitter<ProductState> emit) async {
     try {
       ProductLoaded currentState = state as ProductLoaded;
-      final product =
-          await productRepository.getOneBy(event.barcode, event.branchId);
-      List<ProductDTO> newProducts = List.from(currentState.products);
-      if (product.id != null) {
-        product.inventoryCurrent = product.inventoryCurrent + 1;
-        newProducts.insert(0, product);
-        Fluttertoast.showToast(
-          msg:
-          "Thêm sản phẩm thành công\n${product.name}\nSố lượng: ${product.inventoryCurrent.toInt()}",
-          toastLength: Toast.LENGTH_SHORT,
-          backgroundColor: Colors.green,
-        );
-        emit(ProductLoaded(
-            products: newProducts,
-            nextPage: currentState.nextPage,
-            hasNext: currentState.hasNext,
-            isLoading: "more"));
+      final product = await productRepository.getOneBy(event.barcode, event.branchId);
+
+      if (product.id == null) {
+        showToastErr('Không tìm thấy sản phẩm');
         return;
       }
-      showToastErr('Không tìm thấy sản phẩm');
+
+      List<ProductDTO> newProducts = List.from(currentState.products);
+      int index = newProducts.indexWhere((p) => p.id == product.id);
+
+      if (index != -1) {
+        newProducts[index].inventoryCurrent += (product.quantityPlus ?? 0);
+        newProducts.insert(0, newProducts[index]);
+      } else {
+        product.inventoryCurrent += (product.quantityPlus ?? 0);
+        newProducts.insert(0, product);
+      }
+
+      emit(ProductLoaded(
+        products: newProducts,
+        nextPage: currentState.nextPage,
+        hasNext: currentState.hasNext,
+        isLoading: "more",
+      ));
+
+      showToastSuccess('Thêm sản phẩm thành công');
+
+
+
     } catch (e) {
       showToastErr(ErrorHandling.showMessage(e));
     }
@@ -239,9 +248,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         newProducts[event.index] = event.product;
       }
       else{
-        // Remove the edited product from its current position
         newProducts.removeAt(event.index);
-        // Insert the edited product at the beginning of the list (index 0)
         newProducts.insert(0, event.product);}
 
       emit(
@@ -255,16 +262,9 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
 
       if (event.action == null) {
         if (event.showToast) {
-          //Nếu event.showToast true thì hủy bỏ (cancel) bất kỳ thông báo (toast) nào đang hiển thị, để tránh trùng lặp.
           Fluttertoast.cancel();
-          //close toast and show new toast
-          Fluttertoast.showToast(
-            msg:
-                "${event.product.name}\nSố lượng: ${event.product.inventoryCurrent.toDouble()}",
-            toastLength: Toast.LENGTH_SHORT,
-            backgroundColor: Colors.green,
-          );
-        } //Hiển thị thông báo mới với thông tin tên sản phẩm và số lượng hàng tồn kho, có màu nền xanh lá.
+          showToastSuccess('Thêm sản phẩm thành công');
+        }
       } else {
         Get.back();
         Fluttertoast.showToast(msg: "Thành công!");

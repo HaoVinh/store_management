@@ -81,16 +81,21 @@ class _ChooseStoreScreenState extends State<ChooseStoreScreen> {
     //Đưa vào list
     AuthResponse? auth = await secureStorage.readAuth();
     var map = {
-      "id": auth?.id ?? 0,
+      "id": auth?.branchId ?? 0,
       "branchName": auth?.branchName ?? '',
     };
     List<dynamic> listCNbyUser = [map];
-  
+
     setState(() {
       _dataDecode = listCNbyUser;
+
     });
+
   }
 
+  // decodeData() {
+  //   _dataDecode = jsonDecode(jsonEncode(data))['data'];
+  // }
   DateTime? currentBackPressTime;
 
   _handleWillPop() async {

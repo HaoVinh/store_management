@@ -16,10 +16,6 @@ class AuthRepository extends AbstractRepository {
 
       });
       final authResponse = AuthResponse.fromJson(response.data);
-      //Hiện tại set cứng ,sau này return authResponse;
-      authResponse.id = 16413;
-      authResponse.branchName = "555 KINGMART 108";
-// Sau khi login thành công thì sẽ trả về id chi nhánh và branchName theo user login.
       return authResponse;
 
     } on DioError catch (e) {

@@ -118,9 +118,9 @@ _bringItemToTop(int index,List<ProductDTO> products) {
  if(index < 0 || index >= products.length)
    return;
  setState(() {
-   var product = products.removeAt(index); // Xóa sản phẩm khỏi danh sách
-   products.insert(0, product); // đưa danh sách lên đầu danh sách
-   indexFocus = 0; // focus vào sản phẩm đầu tiên
+   var product = products.removeAt(index);
+   products.insert(0, product);
+   indexFocus = 0;
  });
 }
 
@@ -494,8 +494,8 @@ _bringItemToTop(int index,List<ProductDTO> products) {
               height: 10,
             ),
             Container(
-              alignment: Alignment.centerLeft, // Căn trái hoàn toàn
-              padding: const EdgeInsets.only(left: 20), // Thụt đầu dòng 20px
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 20),
               child: const Text(
                 '1. Chọn trỏ vào trường nhập',
                 style: TextStyle(
@@ -508,8 +508,8 @@ _bringItemToTop(int index,List<ProductDTO> products) {
               height: 10,
             ),
             Container(
-              alignment: Alignment.centerLeft, // Căn trái hoàn toàn
-              padding: const EdgeInsets.only(left: 20), // Thụt đầu dòng 20px
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 20),
               child: const Text(
                 '2. Đưa mã vạch của sản phẩm ngay tia quét và quét sản phẩm',
                 style: TextStyle(
@@ -522,8 +522,8 @@ _bringItemToTop(int index,List<ProductDTO> products) {
               height: 10,
             ),
             Container(
-              alignment: Alignment.centerLeft, // Căn trái hoàn toàn
-              padding: const EdgeInsets.only(left: 20), // Thụt đầu dòng 20px
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 20),
               child: const Text(
                 '3. Sản phẩm chưa có trong danh sách sẽ được thêm vào, ngược lại sẽ được cập nhật số lượng',
                 style: TextStyle(
@@ -536,8 +536,8 @@ _bringItemToTop(int index,List<ProductDTO> products) {
               height: 10,
             ),
             Container(
-              alignment: Alignment.centerLeft, // Căn trái hoàn toàn
-              padding: const EdgeInsets.only(left: 20), // Thụt đầu dòng 20px
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 20),
               child: const Text(
                 '4. Lưu dữ liệu để mỗi khi vào danh sách sản phẩm sẽ hiển thị dữ liệu đã được lưu',
                 style: TextStyle(
@@ -549,8 +549,8 @@ _bringItemToTop(int index,List<ProductDTO> products) {
               height: 10,
             ),
             Container(
-              alignment: Alignment.centerLeft, // Căn trái hoàn toàn
-              padding: const EdgeInsets.only(left: 20), // Thụt đầu dòng 20px
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 20),
               child: const Text(
                 '5. Xoá dữ liệu để cập nhật lại thông số mới',
                 style: TextStyle(
@@ -562,8 +562,8 @@ _bringItemToTop(int index,List<ProductDTO> products) {
               height: 10,
             ),
             Container(
-              alignment: Alignment.centerLeft, // Căn trái hoàn toàn
-              padding: const EdgeInsets.only(left: 20), // Thụt đầu dòng 20px
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 20),
               child: const Text(
                 '6. Có thể nhập mã sản phẩm để hiện danh sách sản phẩm cần thêm',
                 style: TextStyle(
@@ -722,7 +722,6 @@ _bringItemToTop(int index,List<ProductDTO> products) {
       var element = state.products[i];
 
       if (element.code == barcode) {
-        print('Before Update: ${element.inventoryCurrent}');
         _productBloc.add(
           EditProductEvent(
             product: element.copyWith(
@@ -732,8 +731,6 @@ _bringItemToTop(int index,List<ProductDTO> products) {
             index: i,
           ),
         );
-
-        print('After Update: ${element.inventoryCurrent + 1}');
         isExist = true;
         setState(() {
 
@@ -748,17 +745,31 @@ _bringItemToTop(int index,List<ProductDTO> products) {
           indexFocus = -1;
         });
 
+        // Add the product through the bloc
         _productBloc.add(
           AddProductEvent(barcode: barcode, branchId: widget.branchId),
         );
 
-        var currentState = _productBloc.state as ProductLoaded;
-        if (currentState.products.length > oldLength) {
-          _bringItemToTop(0, currentState.products);
-        }
-
+        // Listen for state changes to handle the newly added product
+        _productSubscription?.cancel();
+        _productSubscription = _productBloc.stream.listen((state) {
+          if (state is ProductLoaded) {
+            // Check if the product was added (by comparing with barcode)
+            int newProductIndex = state.products.indexWhere((p) => p.code == barcode);
+            if (newProductIndex >= 0) {
+              // Product was found, bring it to top
+              setState(() {
+                _bringItemToTop(newProductIndex, state.products);
+                // Play sound to indicate successful scan
+                soundWhenScanned();
+              });
+              // Cancel subscription after handling the event
+              _productSubscription?.cancel();
+            }
+          }
+        });
       } catch (e) {
-
+        print('Error adding product: $e');
       }
     }
 
@@ -935,7 +946,7 @@ _bringItemToTop(int index,List<ProductDTO> products) {
             Row(
               children: [
                 Expanded(
-                  flex: 2, // TextField chiếm 4 phần
+                  flex: 2,
                   child: TypeAheadField<ProductDTO>(
                     builder: (context, controller, focusNode) {
                       _barcodeEditingController = controller;
@@ -946,8 +957,8 @@ _bringItemToTop(int index,List<ProductDTO> products) {
                         onChanged: (value) {
                           _onTyping(value);
                         },
-                        onSubmitted: (value) {
-                          _onBarcodeEntered(value);
+                        onEditingComplete: () {
+                          _onBarcodeEntered(_barcodeEditingController.text);
                         },
                         decoration: InputDecoration(
                           labelText: "Mã vạch đã quét",
@@ -1014,7 +1025,7 @@ _bringItemToTop(int index,List<ProductDTO> products) {
                             _isEScaleChecked = value ?? false;
                           });
                         },
-                        visualDensity: VisualDensity(horizontal: -4, vertical: -4), // Giảm khoảng cách
+                        visualDensity: VisualDensity(horizontal: -4, vertical: -4),
                       ),
                       Text(
                         "Cân điện tử",
@@ -1156,7 +1167,9 @@ _bringItemToTop(int index,List<ProductDTO> products) {
                       height: kDefaultPadding / 4,
                     ),
                     Row(
+
                       children: [
+
                         Text(
                           "Tồn thực tế: ${(product.inventoryCurrent.toDouble())?? 0}",
                           style: kTextAveHev14.copyWith(

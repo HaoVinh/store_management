@@ -68,6 +68,7 @@ class ProductDTO {
   List<Expiry>? expires;
   bool isCheck;
   String? scaleCode;
+  double? quantityPlus;
   ProductDTO({
     this.id,
     this.code,
@@ -78,7 +79,8 @@ class ProductDTO {
     this.image = '',
     this.expires,
     this.isCheck = false,
-    this.scaleCode ,});
+    this.scaleCode ,
+  this.quantityPlus ,});
 
   factory ProductDTO.fromJson(Map<String, dynamic> json) {
     return ProductDTO(
@@ -94,7 +96,7 @@ class ProductDTO {
               .map((e) => Expiry.fromJson(e))
               .toList()
           : [],
-    );
+        quantityPlus: json['quantityPlus'] ?? null,);
   }
 
   //toJson
@@ -110,6 +112,7 @@ class ProductDTO {
       'hanSuDungAPIs': expires == null
           ? null
           : List<dynamic>.from(expires!.map((x) => x.toJson())),
+      'quantityPlus': quantityPlus,
     };
   }
 
@@ -125,6 +128,7 @@ class ProductDTO {
     List<Expiry>? expires,
     bool? isCheck,
     String? scaleCode,
+     double? quantityPlus,
   }) {
     return ProductDTO(
       id: id ?? this.id,
@@ -137,7 +141,7 @@ class ProductDTO {
       expires: expires ?? this.expires,
       isCheck: isCheck ?? this.isCheck,
       scaleCode: scaleCode ?? this.scaleCode,
-
+    quantityPlus: quantityPlus ?? this.quantityPlus,
 
     );
   }
@@ -145,6 +149,6 @@ class ProductDTO {
   //toString
   @override
   String toString() {
-    return 'ProductDTO{id: $id, code: $code, name: $name, price: $price, inventory: $inventory, expires: $expires}';
+    return 'ProductDTO{id: $id, code: $code, name: $name, price: $price, inventory: $inventory, expires: $expires,quantityPlus: $quantityPlus}:$quantityPlus';
   }
 }
